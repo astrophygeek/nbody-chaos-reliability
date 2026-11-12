@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+# LaTeX build files
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.toc
+*.bbl
+*.blg
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+# Private local caches
+.env
+.env.*
+# Staging originals are not part of the publishable repository
+incoming/
+# Private educational materials
+/guidebooks/
+
+# Private educational materials
+/guidebooks/
+
+# Local backups
+/incoming/
+/manuscript_archive/
+/manuscript_clean/
+
+# LaTeX temporary files
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+
+# Python temporary files
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Local environment and credentials
+.venv/
+.env
+.env.*
+
+/data/raw/
