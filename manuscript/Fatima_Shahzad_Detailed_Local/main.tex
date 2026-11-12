@@ -317,8 +317,31 @@ The ensemble percentages have important limits. The initial conditions form a st
 \section{Conclusions}
 We constructed a numerical reliability atlas connecting gravitational state error, finite-time Lyapunov disagreement and Jacobi conservation. Euler, leapfrog and RK4 differed markedly in accuracy across two restricted three-body neighborhoods, with RK4 performing best under the joint finite-horizon criteria used here. Under-resolved integrations caused misleading orbital outcomes and both amplification and suppression of chaos-related measurements. A strict invariant screen detected many inaccurate simulations but also excluded accurate ones, while C12 showed why conservation alone cannot certify pointwise convergence. Independent DOP853--Radau calculations strengthened selected reference results. Future work should investigate larger ensembles, longer horizons, multiple tangent directions and independent high-precision reference algorithms before making asymptotic regular-versus-chaotic classifications.
 
-\section*{Data availability and declarations}
-The results originate from the computational notebook and the project figures. Final publication should archive the notebook, package versions, initial conditions and objective-specific CSV exports (especially Objectives 14--18), and rerun aggregate results directly from those archived tables. This draft does not claim a public repository has already been released. AI assistance was used in code explanation, debugging and manuscript preparation; all scientific interpretations and numerical results require author verification before submission.
+
+\section*{Data and Code Availability}
+
+The numerical datasets, simulation results, scientific figures,
+and available computational code supporting this study are
+publicly accessible through the project's GitHub repository:
+
+\begin{center}
+\url{https://github.com/astrophygeek/nbody-chaos-reliability}
+\end{center}
+
+For long-term preservation and reproducible citation, an
+archived version of the research repository is available
+through Zenodo under the following DOI:
+
+\begin{center}
+\href{https://doi.org/10.5281/zenodo.24158795}
+{\textbf{DOI: 10.5281/zenodo.24158795}}
+\end{center}
+
+The repository includes numerical experiment outputs,
+scientific visualizations, the research manuscript, and
+available implementation files. Complete executable
+workflows for all experiments have not yet been consolidated
+into the public repository.
 
 \begin{thebibliography}{9}
 \small
