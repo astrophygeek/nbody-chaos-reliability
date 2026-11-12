@@ -21,7 +21,7 @@ Numerical simulations allow us to investigate gravitational systems whose motion
 
 This project investigates how numerical integration methods, timestep selection, and solver tolerances influence orbital predictions and finite-time chaos diagnostics.
 
-The study compares Forward Euler, Leapfrog, fourth-order RungeÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Kutta (RK4), DOP853, and Radau. Numerical reliability is evaluated through trajectory agreement, finite-time Lyapunov exponents, convergence tests, and conservation diagnostics.
+The study compares Forward Euler, Leapfrog, fourth-order Runge-Kutta (RK4), DOP853, and Radau. Numerical reliability is evaluated through trajectory agreement, finite-time Lyapunov exponents, convergence tests, and conservation diagnostics.
 
 ## Research Objectives
 
