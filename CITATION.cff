@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this research software, please cite this repository."
+type: software
+title: "Numerical Artifacts and the Reliability of Chaos Diagnostics in Gravitational N-Body Dynamics"
+authors:
+  - given-names: Fatima
+    family-names: Shahzad
+abstract: >-
+  Computational astrophysics research investigating numerical artifacts,
+  trajectory convergence, conservation diagnostics, finite-time Lyapunov
+  exponents, and solver reliability in gravitational N-body dynamics.
+keywords:
+  - computational astrophysics
+  - celestial mechanics
+  - gravitational dynamics
+  - numerical integration
+  - chaos theory
+  - Lyapunov exponents
+  - numerical reliability
+repository-code: "https://github.com/astrophygeek/nbody-chaos-reliability"
