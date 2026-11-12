@@ -1,0 +1,1 @@
+case_id,family,radius,angle,integrator,dt,ftle,state_error_pct,ftle_error_pct,run_status,reference_verified,valid_comparison,ftle_unreliable,state_unreliable,misleading_agreement,jacobi_drift,jacobi_status,adaptive_jacobi_drift,excellent_conservation,bad_ftle,bad_state,conservation_false_reassurance

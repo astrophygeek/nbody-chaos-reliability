@@ -1,0 +1,50 @@
+OBJECTIVE 01 — NEWTONIAN GRAVITY AT A SINGLE INSTANT
+==========================================================
+Units are normalized: G = 1. This is NOT an orbital simulation yet.
+
+Each body has a mass m, position r=(x,y), velocity v=(vx,vy),
+and an acceleration a=(ax,ay) caused by other objects.
+
+Star:
+  mass             = 1.000000
+  position         = [0. 0.]
+  velocity         = [0. 0.]
+  acceleration     = [0.001      0.00078125]
+  |acceleration|   = 0.001268996
+
+Planet A:
+  mass             = 0.001000
+  position         = [1. 0.]
+  velocity         = [0. 1.]
+  acceleration     = [-1.00029775e+00  4.76403542e-04]
+  |acceleration|   = 1.000297866
+
+Planet B:
+  mass             = 0.002000
+  position         = [0.  1.6]
+  velocity         = [-0.8  0. ]
+  acceleration     = [ 1.48876107e-04 -3.90863202e-01]
+  |acceleration|   = 0.390863230
+
+PAIRWISE FORCES (Newton's third law)
+  Planet A on Star: [0.001 0.   ]
+  Star on Planet A: [-0.001  0.   ]
+  Sum (approximately zero): [0. 0.]
+  Planet B on Star: [0.         0.00078125]
+  Star on Planet B: [ 0.         -0.00078125]
+  Sum (approximately zero): [0. 0.]
+  Planet B on Planet A: [-2.97752213e-07  4.76403542e-07]
+  Planet A on Planet B: [ 2.97752213e-07 -4.76403542e-07]
+  Sum (approximately zero): [0. 0.]
+
+Center of mass = [0.00099701 0.00319043]
+Total momentum = [-0.0016  0.001 ]
+Sum of all gravitational forces = [5.85511525e-20 0.00000000e+00]
+(The last sum should be approximately zero: internal forces cancel.)
+
+WHAT TO NOTICE:
+* The arrow for acceleration points toward the combined pull of other bodies.
+* A large mass can have a small acceleration, even when its force is real.
+* Acceleration is not the same as velocity; a body can move in one
+  direction while gravity bends its motion toward another direction.
+* None of this yet proves whether an orbit is stable or chaotic.

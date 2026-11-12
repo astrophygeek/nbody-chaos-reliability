@@ -1,0 +1,367 @@
+\documentclass[10pt,letterpaper,twocolumn]{article}
+\usepackage[margin=0.72in,top=0.75in,bottom=0.75in,columnsep=0.27in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx}
+\usepackage{amsmath,amssymb,booktabs,graphicx,microtype,caption,xcolor,placeins,array,multirow}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{needspace}
+\usepackage{etoolbox}
+\usepackage[compact]{titlesec}
+\graphicspath{{figures/}}
+\captionsetup{font=scriptsize,labelfont=bf,justification=raggedright,singlelinecheck=false,skip=1pt}
+\setlength{\parindent}{1em}
+\setlength{\parskip}{0pt}
+\raggedbottom
+\titlespacing*{\section}{0pt}{8pt plus 2pt minus 1pt}{3pt}
+\titlespacing*{\subsection}{0pt}{6pt plus 1pt minus 1pt}{2pt}
+\setlength{\abovedisplayskip}{5pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{5pt plus 2pt minus 2pt}
+\setlength{\abovedisplayshortskip}{3pt}
+\setlength{\belowdisplayshortskip}{3pt}
+\setlength{\textfloatsep}{9pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{7pt plus 2pt minus 2pt}
+\setcounter{topnumber}{5}
+\setcounter{totalnumber}{8}
+\renewcommand{\topfraction}{.92}
+\renewcommand{\textfraction}{.06}
+\renewcommand{\floatpagefraction}{.76}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0pt}
+% Compact anchored figures: no floating or split-panel PNGs.
+% Each graphic is deliberately kept with its caption at the source position.
+% Narrow-page maximum height prevents one plot from occupying a full column.
+\newcommand{\anchoredfig}[2]{%
+  \par\vspace{1.5pt}%
+  \noindent\begin{minipage}{\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.195\textheight,keepaspectratio]{#1}\par
+    \vspace{1pt}%
+    \captionof{figure}{#2}
+  \end{minipage}\par\vspace{1.5pt}%
+}
+\newcommand{\fixedfig}[2]{\anchoredfig{#1}{#2}}
+\newcommand{\widefig}[2]{\anchoredfig{#1}{#2}}
+\title{\bfseries\Large Numerical Artifacts and the Reliability of Chaos Diagnostics in Gravitational $N$-Body Dynamics}
+\author{Fatima Shahzad\\\small Independent computational astrophysics research}
+\date{}
+\begin{document}
+\twocolumn[\begin{@twocolumnfalse}
+\maketitle
+\vspace{-1.9em}
+\begin{abstract}
+\noindent Numerical integration errors can change orbital outcomes and distort diagnostics commonly used to infer chaotic behavior. We investigate forward Euler, kick--drift--kick leapfrog, fourth-order Runge--Kutta (RK4), and adaptive methods in normalized Newtonian two-body and circular restricted three-body systems. An analytically regular control, close-encounter experiments, variational-equation calculations, and a structured ensemble of 18 initial conditions were examined. Of 108 fixed-step ensemble integrations, 102 admitted independently refined adaptive-reference comparisons. Under exploratory criteria of at most 10\% relative final-state disagreement and 5\% relative finite-time Lyapunov exponent (FTLE) disagreement, RK4 passed both criteria in 18/18 verified regular-neighborhood comparisons and 7/16 verified high-sensitivity comparisons; Euler passed neither in any verified comparison. Some runs reproduced an FTLE while disagreeing substantially in physical state. A strict relative Jacobi-drift screen below $10^{-6}$ passed 15 comparisons, all of which also passed both numerical diagnostics, while rejecting 19 otherwise acceptable comparisons. Independent DOP853--Radau comparisons supported selected finite-time calculations and exposed the limitations of invariant-only validation. The resulting reliability atlas characterizes numerical agreement, not definitive asymptotic chaos labels.
+\end{abstract}
+\vspace{0.1em}
+\noindent\textbf{Keywords:} numerical gravitational dynamics; $N$-body problem; circular restricted three-body problem; Lyapunov exponent; Jacobi invariant; convergence; numerical artifacts.
+\vspace{0.2em}
+\end{@twocolumnfalse}]
+
+\section{Introduction}
+Imagine predicting where a planet will be a hundred years from now. The basic rule is familiar: gravity pulls objects toward one another. Given their masses, positions and velocities, Newton's laws tell us how that pull changes their motion. For an isolated planet circling a single star, this can be turned into a remarkably accurate mathematical prediction. But as soon as several bodies interact, the motion becomes harder to describe with a tidy formula. A planet can tug on another planet, changing its speed and direction; a small body can pass near a larger one and be sharply deflected. Computer simulations are therefore indispensable in celestial mechanics.
+
+A computer cannot follow continuously changing motion at every instant. Instead, it calculates the system at a succession of times and estimates what happens between them. This apparently modest approximation is the source of our central question: \emph{if a simulated orbit behaves strangely, how can we tell whether nature is responsible or the numerical calculation is?} A slowly drifting orbit, a sudden escape or rapid separation between neighboring trajectories might reflect real dynamics. It might also arise because the simulation took steps that were too large to resolve the forces acting on the bodies.
+
+One reason the question matters is that gravitational systems can be \emph{sensitive to initial conditions}. Think of two test particles launched from nearly identical places with almost identical velocities. In a sensitive region, their paths may eventually diverge. This is often associated with chaos, but sensitivity is not the same as randomness: the equations remain deterministic. Moreover, a computer introduces small discrepancies of its own, even when we enter precisely the same initial conditions. If those discrepancies grow, a numerical calculation can imitate or obscure the behavior we wanted to measure \cite{lichtenberg1992regular}.
+
+The distinction is particularly important in a \emph{close encounter}. Gravity becomes much stronger as the distance between bodies shrinks. A timestep that gives a clean result during a gentle, nearly circular orbit may leap over the most important part of a close passage. A plot of that output can look smooth and persuasive while describing a physically incorrect trajectory. A convincing figure is therefore not, by itself, evidence of a reliable calculation.
+
+Researchers have developed different ways of advancing these equations in time. Some methods are simple but accumulate substantial error; others are designed to respect the geometric structure of orbital motion; still others adapt the timestep to difficult passages. These methods need not agree equally well on every quantity. A scheme may preserve energy impressively while losing the precise orbital phase, or reproduce a measure of sensitivity while predicting a different final location \cite{hairer2006geometric,wisdom1991symplectic,rein2015ias15}.
+
+In this study we put these possible disagreements at the center of the analysis. We first use a two-body orbit, whose behavior is known, to identify errors that no physical chaos can explain. We then study a circular restricted three-body model: a star and a planet orbit their common center of mass, while a much lighter test particle responds to their gravity without changing the primaries' motion. This controlled setting allows us to change orbital starting conditions, integration methods and timestep sizes one at a time.
+
+Rather than trusting a single plot or number, we compare three kinds of evidence: whether the computed physical state agrees with a more carefully resolved calculation, whether a finite-time measure of trajectory sensitivity agrees, and whether the calculation approximately respects a known conserved quantity. We use these comparisons to construct a \emph{numerical reliability atlas} across a small, structured set of configurations. Our objective is not to declare every orbit permanently chaotic or regular. It is to show, in a way that can be checked and repeated, when the numerical evidence behind such a judgment becomes trustworthy---and when it does not.
+
+\section{Mathematical framework}
+\subsection{What is being predicted?}
+The state of a moving body consists of its position $\boldsymbol r_i(t)$ and velocity $\boldsymbol v_i(t)$ at time $t$. A bold symbol denotes a vector: in a planar calculation, $\boldsymbol r_i=(x_i,y_i)$ and $\boldsymbol v_i=(v_{x,i},v_{y,i})$. The subscript $i$ labels the body. Velocity describes how position changes, while acceleration describes how velocity changes:
+\begin{equation}
+ \frac{d\boldsymbol r_i}{dt}=\boldsymbol v_i,\qquad
+ \frac{d\boldsymbol v_i}{dt}=\boldsymbol a_i.
+\end{equation}
+These are differential equations: they specify an instantaneous rate of change rather than directly giving the orbit at an arbitrary future time. A simulation constructs an approximation to their solution from an initial state at $t=0$.
+
+\subsection{Newton's gravitational interaction}
+For two masses $m_i$ and $m_j$, let $\boldsymbol R_{ij}=\boldsymbol r_j-\boldsymbol r_i$ be the displacement from body $i$ to body $j$ and $R_{ij}=\lVert\boldsymbol R_{ij}\rVert$ its length. Newton's gravitational force on $i$ due to $j$ is
+\begin{equation}
+ \boldsymbol F_{ij}=Gm_im_j\frac{\boldsymbol R_{ij}}{R_{ij}^{3}}.
+\end{equation}
+The direction is toward body $j$. The denominator has a third power because the numerator is a displacement vector: its length contributes one power, leaving the familiar inverse-square dependence of force magnitude. Since $\boldsymbol F_i=m_i\boldsymbol a_i$, the factor $m_i$ cancels when force is converted to acceleration. Summing the forces of all other bodies gives
+\begin{equation}\label{eq:newton}
+ \boxed{\ddot{\boldsymbol r}_i=G\sum_{j\ne i}m_j
+ \frac{\boldsymbol r_j-\boldsymbol r_i}
+ {\lVert\boldsymbol r_j-\boldsymbol r_i\rVert^{3}}.}
+\end{equation}
+Here $G$ is the gravitational constant, $N$ is the number of bodies and the sum simply means ``add the pull from every other body.'' The double dot is a second derivative with respect to time: acceleration. Equation~\eqref{eq:newton} is the physical engine behind every numerical experiment in the paper.
+
+The acceleration rises steeply when a separation becomes small. In fact, its magnitude for a single pair scales as $R^{-2}$. This explains why close encounters are so demanding: a small change in separation can produce a large change in acceleration during a short interval. An ideal Newtonian point-mass collision is singular; the simulations discussed here concern finite separations rather than a physical collision treatment.
+
+\subsection{Units and a known two-body control}
+We work in normalized units with $G=1$. This is a change of scale, not a change of gravity: masses, lengths and times are expressed relative to chosen reference values. For a circular orbit of two masses $m_1$ and $m_2$ separated by $a$, the angular frequency is
+\begin{equation}\label{eq:omega}
+ \omega^2=\frac{G(m_1+m_2)}{a^3},\qquad
+ P=\frac{2\pi}{\omega},
+\end{equation}
+where $P$ is the orbital period. To see where this comes from, equate the inward gravitational acceleration $G(m_1+m_2)/a^2$ of their relative separation to the required circular acceleration $\omega^2a$. In barycentric coordinates, the distances of the primaries from the center of mass are $a_1=m_2a/(m_1+m_2)$ and $a_2=m_1a/(m_1+m_2)$, with opposite position vectors.
+
+For a Newtonian two-body system, the relative specific energy is
+\begin{equation}\label{eq:energy}
+ \mathcal E=\frac12\lVert\boldsymbol v_{\rm rel}\rVert^2
+       -\frac{G(m_1+m_2)}{r},
+\end{equation}
+with $r$ the separation and $\boldsymbol v_{\rm rel}$ the relative velocity. A bound Keplerian orbit has $\mathcal E<0$. In the absence of numerical error, the energy stays constant. This gives us a powerful control: if an initially bound two-body orbit becomes unbound solely because the timestep was changed, the apparent escape is a numerical artifact rather than evidence of physical chaos.
+
+\subsection{The circular restricted three-body model}
+A general three-body system allows all three masses to influence each other. We use a simpler, carefully defined version. The star and planet, with masses $m_1$ and $m_2$, follow prescribed circular barycentric orbits. A third body has negligible mass, so it feels their pull but does not alter the primaries' paths. In our normalized configurations, $m_1=1$, $m_2\in\{0.001,0.005\}$ and the primary separation is $a=1$. Writing the test particle's position as $\boldsymbol r$, its acceleration is
+\begin{equation}\label{eq:restricted}
+ \ddot{\boldsymbol r}=Gm_1\frac{\boldsymbol r_1(t)-\boldsymbol r}{\lVert\boldsymbol r_1(t)-\boldsymbol r\rVert^3}
+ +Gm_2\frac{\boldsymbol r_2(t)-\boldsymbol r}{\lVert\boldsymbol r_2(t)-\boldsymbol r\rVert^3}.
+\end{equation}
+The primary positions $\boldsymbol r_1(t)$ and $\boldsymbol r_2(t)$ rotate at the angular speed in Eq.~\eqref{eq:omega}. The test particle begins at a specified radius and orbital phase, with its prescribed initial velocity. We vary the radius, phase and planet mass to probe different encounter geometries. Calling one region ``regular-looking'' and another ``high-sensitivity'' describes what the finite-time experiments show; it is not a theorem about their asymptotic dynamics.
+
+\subsection{Turning differential equations into computer steps}
+To compute an orbit, collect position and velocity into a single state vector $\boldsymbol y=(\boldsymbol r,\boldsymbol v)$. The differential equations become $\dot{\boldsymbol y}=\boldsymbol f(t,\boldsymbol y)$, where $\boldsymbol f$ returns velocity and acceleration. A numerical method uses $\boldsymbol y_n$ at time $t_n$ to estimate $\boldsymbol y_{n+1}$ at $t_{n+1}=t_n+h$, with timestep $h$.
+
+\paragraph{Forward Euler.} The simplest update assumes the current rate of change remains constant throughout one step:
+\begin{equation}
+ \boldsymbol r_{n+1}=\boldsymbol r_n+h\boldsymbol v_n,\quad
+ \boldsymbol v_{n+1}=\boldsymbol v_n+h\boldsymbol a_n.
+\end{equation}
+The method is first-order accurate globally: in a smooth fixed-time problem, the accumulated error typically shrinks in proportion to $h$ as $h\to0$. Euler is useful here as a deliberately basic benchmark; it need not preserve orbital energy or boundedness.
+
+\paragraph{Kick--drift--kick leapfrog.} The velocity is updated by half a step, the position by a full step, and the velocity by the remaining half step:
+\begin{align}
+ \boldsymbol v_{n+1/2}&=\boldsymbol v_n+\tfrac h2\boldsymbol a(\boldsymbol r_n,t_n),\\
+ \boldsymbol r_{n+1}&=\boldsymbol r_n+h\boldsymbol v_{n+1/2},\\
+ \boldsymbol v_{n+1}&=\boldsymbol v_{n+1/2}+\tfrac h2
+ \boldsymbol a(\boldsymbol r_{n+1},t_{n+1}).
+\end{align}
+For the separable Hamiltonian systems considered here, the method is second-order and symplectic: it preserves a discrete version of the system's phase-space geometry. This often improves long-term orbital behavior, although it does not guarantee a small pointwise trajectory error, especially across a poorly resolved encounter \cite{hairer2006geometric,wisdom1991symplectic}.
+
+\paragraph{Fourth-order Runge--Kutta.} RK4 samples the slope four times within each step:
+\begin{align}
+ \boldsymbol k_1&=\boldsymbol f(t_n,\boldsymbol y_n),\\
+ \boldsymbol k_2&=\boldsymbol f(t_n+h/2,\boldsymbol y_n+h\boldsymbol k_1/2),\\
+ \boldsymbol k_3&=\boldsymbol f(t_n+h/2,\boldsymbol y_n+h\boldsymbol k_2/2),\\
+ \boldsymbol k_4&=\boldsymbol f(t_n+h,\boldsymbol y_n+h\boldsymbol k_3),\\
+ \boldsymbol y_{n+1}&=\boldsymbol y_n+\tfrac h6
+ (\boldsymbol k_1+2\boldsymbol k_2+2\boldsymbol k_3+\boldsymbol k_4).
+\end{align}
+The weighted average estimates how the slope varies across the step. Its global error is ordinarily fourth-order for a sufficiently smooth, resolved problem. That advantage can disappear when $h$ is large compared with a close-encounter timescale; an accurate-looking trajectory is not proof that the encounter was resolved.
+
+\paragraph{Adaptive reference integration.} DOP853 is a high-order explicit Runge--Kutta method that adjusts its step size according to a local error estimate. Radau is an implicit collocation method with different numerical behavior. Our reference calculations tighten error tolerances and compare independently computed solutions. The generic local error acceptance test has the form
+\begin{equation}
+ |e_i|\lesssim {\rm atol}_i+{\rm rtol}|y_i|,
+\end{equation}
+where $e_i$ is a component-wise estimate of local numerical error, $\mathrm{atol}$ is an absolute tolerance and $\mathrm{rtol}$ a relative tolerance. Meeting this test does not automatically certify the global trajectory or a derived chaos diagnostic \cite{virtanen2020scipy}.
+
+\subsection{Why timestep refinement matters}
+A convergent method should approach a stable numerical answer as its timestep is reduced, so long as the underlying problem remains resolved. If errors at $h$ and $h/2$ are respectively $E(h)$ and $E(h/2)$, an empirical order estimate is
+\begin{equation}
+ p_{\rm obs}=\log_2\!\left(\frac{E(h)}{E(h/2)}\right).
+\end{equation}
+For example, a factor of approximately $16$ in global error reduction when halving $h$ is consistent with fourth-order convergence. Such ratios only make sense in an asymptotic regime; near an unresolved close encounter, the observed order can change abruptly. The local truncation error of RK4 is order $h^5$, while its accumulated \emph{global} error is order $h^4$ under suitable regularity assumptions.
+
+\subsection{Quantifying sensitivity: the tangent equations}
+Two nearby initial states need not stay nearby. To study their separation without launching many independent trajectories, we follow an infinitesimal perturbation $\delta\boldsymbol r_i$ and its velocity counterpart $\delta\boldsymbol v_i$ alongside the original orbit. The symbol $\delta$ means a small change; it is not a change in the physical mass or in the equations of gravity.
+
+Take the difference between the gravitational accelerations at two almost identical states and retain only the terms linear in their separation. With $\delta\boldsymbol R_{ij}=\delta\boldsymbol r_j-\delta\boldsymbol r_i$, the result is
+\begin{align}\label{eq:tangent}
+ \delta\ddot{\boldsymbol r}_i=G\sum_{j\ne i}m_j\bigg[
+ &\frac{\delta\boldsymbol R_{ij}}{R_{ij}^3}\\[-0.4em]
+ &-\frac{3\boldsymbol R_{ij}(\boldsymbol R_{ij}\cdot\delta\boldsymbol R_{ij})}{R_{ij}^5}\bigg].\nonumber
+\end{align}
+The first term responds to the displacement itself; the second subtracts the component aligned with the separation vector, accounting for the change in force direction and magnitude. Equivalently, for one source the derivative matrix is
+\begin{equation}
+ \boldsymbol A_{ij}=Gm_j\left(\frac{\boldsymbol I}{R_{ij}^3}
+ -\frac{3\boldsymbol R_{ij}\boldsymbol R_{ij}^{\mathsf T}}{R_{ij}^5}\right),
+\end{equation}
+where $\boldsymbol I$ is the identity matrix and $\mathsf T$ denotes transpose. This matrix measures how a small position displacement changes acceleration. In the restricted problem we can hold the prescribed primaries unperturbed, so the tangent system measures the response of the test particle alone.
+
+\subsection{Finite-time Lyapunov exponent (FTLE)}
+Suppose a small tangent vector starts with norm $\lVert\delta\boldsymbol y_0\rVert$ and grows. An elementary finite-time rate of separation is
+\begin{equation}
+ \lambda_T=\frac1T\log\!\left(
+ \frac{\lVert\delta\boldsymbol y(T)\rVert}{\lVert\delta\boldsymbol y(0)\rVert}
+ \right).
+\end{equation}
+A positive value means the perturbation amplified on average over the observation window $T$; a negative value means it contracted in the measured direction. For long integrations, the tangent vector can become numerically huge or tiny. We therefore periodically renormalize it. If $g_k$ is the norm amplification accumulated between successive normalizations, the same calculation becomes
+\begin{equation}\label{eq:ftle}
+ \boxed{\lambda_T=\frac1T\sum_k\log g_k.}
+\end{equation}
+Our numerical FTLE uses a norm combining position and appropriately normalized velocity perturbations. That choice of normalization matters: position and velocity have different units, so an unscaled Euclidean norm would combine unlike quantities. The result also depends on the observation time and initial perturbation direction. Only a suitable long-time limit can support statements about an asymptotic Lyapunov exponent; a positive value at finite $T$ does not, on its own, prove chaos \cite{benettin1980lyapunov1,benettin1980lyapunov2}.
+
+\subsection{Conservation laws: what the Jacobi constant says}
+The two-body control offers conserved energy and angular momentum. In the circular restricted three-body problem, the natural conserved scalar is instead the Jacobi constant, defined in a frame rotating with the primaries. Let $(x,y)$ be the test particle's barycentric rotating-frame coordinates, $r_1,r_2$ its distances to the star and planet, and $\omega$ the primaries' angular speed. Write the effective potential as
+\begin{equation}
+ \Omega(x,y)=\frac{Gm_1}{r_1}+\frac{Gm_2}{r_2}
+ +\frac{\omega^2}{2}(x^2+y^2).
+\end{equation}
+The centrifugal contribution is the last term. If $v_{\rm rot}^2=\dot x^2+\dot y^2$, the Jacobi constant is
+\begin{equation}\label{eq:jacobi}
+ \boxed{C_J=2\Omega(x,y)-v_{\rm rot}^2.}
+\end{equation}
+The equation expresses a trade-off: a change in position-dependent effective potential is balanced by rotating-frame kinetic motion. Along an exact restricted three-body trajectory, $C_J$ is constant. To assess numerical conservation, we use the largest sampled relative drift,
+\begin{equation}
+ \epsilon_J=\max_t\frac{|C_J(t)-C_J(0)|}{|C_J(0)|}.
+\end{equation}
+The denominator is appropriate here because the evaluated initial constants are nonzero; a near-zero initial value would call for an absolute or independently scaled difference. A nearly constant $C_J$ is reassuring but incomplete: many distinct points in phase space can share exactly the same Jacobi value. A simulator can remain on (or near) the correct invariant surface while being at the wrong location on that surface.
+
+\subsection{Comparing physical states and sensitivity estimates}
+A useful validation asks two separate questions: ``Did the particle end up in roughly the same physical state?'' and ``Did we estimate its sensitivity to small disturbances consistently?'' Let $X$ collect star-relative position and velocity components, with consistent scaling, and let ``ref'' denote an independently refined integration. The relative state disagreement is
+\begin{equation}\label{eq:stateerror}
+ \epsilon_X=\frac{\lVert X_{\rm fixed}-X_{\rm ref}\rVert}
+ {\lVert X_{\rm ref}\rVert}.
+\end{equation}
+For the finite-time exponent the analogous comparison is
+\begin{equation}\label{eq:lyaperror}
+ \epsilon_\lambda=\frac{|\lambda_{\rm fixed}-\lambda_{\rm ref}|}
+ {|\lambda_{\rm ref}|}.
+\end{equation}
+A relative exponent error becomes unstable when the reference value is near zero, so such comparisons must be interpreted with care. For our reported finite-time ensemble we use exploratory agreement conditions $\epsilon_X\le0.10$ and $\epsilon_\lambda\le0.05$. These are \emph{chosen numerical screening thresholds}, not boundaries between physically chaotic and regular motion. If refined reference solutions do not agree sufficiently, that case remains unresolved instead of being forced into a success or failure category.
+
+The three measures $\epsilon_X$, $\epsilon_\lambda$ and $\epsilon_J$ illuminate different parts of the calculation. A good sensitivity estimate can coexist with an inaccurate state, and excellent conservation can coexist with disagreement between independently resolved trajectories. This is why our central result is a comparison across diagnostics rather than a single ``accuracy score.''
+
+\section{Numerical implementation}
+\subsection{Four integration approaches}
+Forward Euler is used as a first-order baseline. Kick--drift--kick leapfrog is second-order and symplectic; its tangent equations are derived by differentiating the same discrete kick and drift operations. Explicit RK4 provides fourth-order accuracy in smooth, fixed-horizon problems. Adaptive DOP853 supplies the primary high-order reference; implicit Radau provides an algorithmically distinct check \cite{hairer2006geometric,virtanen2020scipy}.
+
+\subsection{Controlled numerical errors}
+We distinguish phase-space agreement from FTLE agreement. With $X$ denoting the star-relative position and velocity vector, we use
+\begin{equation}
+ \epsilon_X=\frac{\lVert X_{\rm fixed}-X_{\rm ref}\rVert}{\lVert X_{\rm ref}\rVert},\quad
+ \epsilon_\lambda=\frac{|\lambda_{\rm fixed}-\lambda_{\rm ref}|}{|\lambda_{\rm ref}|}.
+\end{equation}
+For the ensemble, an exploratory ``both consistent'' outcome requires $\epsilon_X\le 0.10$ and $\epsilon_\lambda\le 0.05$. When the reference fails verification, the comparison is \emph{unresolved}; failures are never counted as successes.
+
+\section{Baseline experiments and encounter resolution}
+\subsection{Euler drift and orbital geometry}
+A forward Euler simulation accumulated energy error monotonically, whereas reducing its timestep systematically decreased this drift (Fig.~\ref{fig:euler}). The same nominal orbital initial conditions evolved into increasingly distorted trajectories under Euler, while leapfrog preserved much more nearly closed orbits (Fig.~\ref{fig:orbits}). Angular-momentum monitoring showed that leapfrog drift was close to floating-point scales in this simple benchmark, in sharp contrast with Euler (see the angular-momentum comparison).
+
+\widefig{euler_energy.png}{\label{fig:euler}Effect of timestep on forward Euler energy error. The monotonic drift decreases as the timestep is refined, illustrating the method's systematic bias in orbital integration.}
+\widefig{euler_timestep.png}{\label{fig:orbits}Star--planet orbital geometry under forward Euler (left) and leapfrog (right). Euler trajectories spiral; leapfrog orbits remain approximately closed over this comparison.}
+\fixedfig{angular_momentum.png}{\label{fig:ang}Angular-momentum error of Euler, leapfrog and RK4. A logarithmic ordinate exposes orders-of-magnitude differences obscured on linear axes.}
+
+\subsection{Close encounters and local convergence}
+Close passages are challenging because derivatives of the acceleration grow rapidly as separation decreases. In the encounter experiment, a candidate test particle approached a massive planet closely enough that fixed timesteps exceeding the characteristic encounter timescale led to grossly different scattering outcomes. An adaptive reference resolved the encounter with rapidly shrinking accepted steps, and high-resolution comparisons converged on the closest-approach time and distance.
+
+\widefig{adaptive_encounter.png}{\label{fig:encounter}Adaptive reference near the closest planetary encounter. The minimum is sharply localized in time, requiring integration steps much smaller than those adequate for a regular orbit.}
+\widefig{adaptive_step.png}{\label{fig:step}Adaptive timestep behavior across the encounter and in a magnified interval around the minimum separation. Accepted steps contract sharply near the most demanding part of the trajectory.}
+\fixedfig{rk4_failure.png}{\label{fig:fail}Fixed RK4 timestep compared with the encounter timescale: coarse steps can exceed the local resolution requirement by several orders of magnitude.}
+\widefig{local_convergence.png}{\label{fig:order}Observed local RK4 convergence of position and velocity errors in a resolved encounter window. Approximately fifth-order \emph{local} error behavior is compatible with fourth-order global RK4 convergence.}
+
+\subsection{Spurious orbital escape in a regular control}
+A separate two-body benchmark established that coarse RK4 discretization can generate unphysical energy gains and artificial unbinding despite the analytically bound initial orbit. The apparent escape time depends strongly on timestep, emphasizing that qualitative orbital classification can be corrupted by the integrator even without physical chaos. Figure~\ref{fig:escape} illustrates the numerical transition.
+\widefig{false_escape.png}{\label{fig:escape}Numerical orbital unbinding versus RK4 timestep. Artificial escape occurs at coarse steps in an otherwise regular, analytically bound two-body control.}
+
+\section{Finite-time sensitivity experiments}
+\subsection{Regular controls and high-sensitivity candidates}
+The first regular two-body FTLE decayed with integration time; its positive early value was a transient finite-horizon measurement rather than a chaos classification. Scans of restricted three-body initial radii and perturbing-planet masses revealed heterogeneous sensitivity, not a monotonic relationship with perturbation strength. A candidate at test radius 1.34 and planetary mass 0.005 exhibited stronger finite-time tangent growth than nearby cases. Another initial condition near radius 1.59 was less sensitive over the tested interval.
+
+\fixedfig{ftle_candidate.png}{\label{fig:ftle}Adaptive FTLE histories for two three-body candidates over $T=240$. The more sensitive trajectory retains a substantially larger finite-time estimate, but both require long-time qualification.}
+\fixedfig{long_growth.png}{\label{fig:growth}Accumulated tangent-vector logarithmic growth for the high-sensitivity candidate. Its approximately linear portions represent sustained \emph{finite-window} amplification, not proof of an asymptotic positive exponent.}
+
+\subsection{Numerical predictability and convergence}
+Independent adaptive trajectories from identical initial states separate over long time intervals. Their relative position difference grew approximately exponentially over a selected intermediate window, with a fitted numerical discrepancy-growth rate of about 0.0446 in normalized units. This is not identical to a maximal Lyapunov exponent, because numerical errors are injected repeatedly by the algorithms. The experiment instead illustrates a finite numerical predictability horizon.
+
+\section{Ensemble reliability atlas}
+\subsection{Design and verified denominator}
+Two structured neighborhoods were sampled: nine initial conditions near radius 1.40, planet mass 0.001, and nine near radius 1.34, mass 0.005. Radius offsets were $-0.01,0,+0.01$ and phase offsets were $-5^\circ,0,+5^\circ$. Each case was integrated with Euler, leapfrog and RK4 at $\Delta t=0.04$ and $0.10$, yielding 108 attempts at $T=120$. Two refined DOP853 references were checked before assessing each fixed-step result: 102 comparisons were retained, six linked to one unverified initial configuration were unresolved.
+
+\begin{table}[!htbp]\centering\caption{Both-diagnostic agreement rates under the exploratory 10\% final-state and 5\% relative-FTLE limits. Fractions give passing cases over verified comparisons; missing cases are not counted as passes.}\label{tab:atlas}\small\begin{tabular}{llccc}\toprule Family & Step & Euler & Leapfrog & RK4\\\midrule Regular-looking & 0.04 & 0/9 & 9/9 & 9/9\\ Regular-looking & 0.10 & 0/9 & 0/9 & 9/9\\ High-sensitivity & 0.04 & 0/8 & 0/8 & 6/8\\ High-sensitivity & 0.10 & 0/8 & 0/8 & 1/8\\\bottomrule\end{tabular}\end{table}
+
+\widefig{ensemble_ftle.png}{\label{fig:ensemble}Median relative FTLE disagreement across the ensemble. RK4 is highly accurate at the smaller timestep in both neighborhoods; increasing timestep strongly affects the high-sensitivity cases.}
+\widefig{ensemble_scatter.png}{\label{fig:scatter}State error versus FTLE error for the two initial-condition neighborhoods. An apparently accurate FTLE can coexist with substantial final-state disagreement.}
+\fixedfig{threshold_heatmap.png}{\label{fig:thresh}Frequency of misleading FTLE agreement across exploratory state-error and FTLE-error thresholds. This robustness check prevents reliance on a single arbitrary cutoff.}
+
+\subsection{Numerical outcomes}
+Table~\ref{tab:atlas} and Fig.~\ref{fig:atlasplot} show a strong dependence on numerical method and dynamical regime. RK4 met both criteria in all 18 verified regular-neighborhood comparisons, but only seven of 16 verified high-sensitivity comparisons. Leapfrog passed nine of 18 regular-neighborhood comparisons at the finer step and none of the high-sensitivity comparisons; Euler passed no verified comparisons under the joint rule. These outcomes describe this sampled grid and time horizon, not universal method rankings.
+
+\widefig{atlas.png}{\label{fig:atlasplot}Final numerical reliability atlas, with verified numerators/denominators by neighborhood, integration method and timestep. Darker cells indicate larger fractions in each diagnostic category; the middle panel marks FTLE agreement that conceals state error.}
+\widefig{outcome.png}{\label{fig:outcomes}Outcome distribution counting all attempted simulations, including unresolved cases. The four verified categories distinguish joint agreement, one-diagnostic disagreement, and failure of both diagnostics.}
+\widefig{robustness.png}{\label{fig:robust}Sensitivity of the joint-agreement rate to alternative state and FTLE error limits. Method rankings remain stable within the tested threshold grid, although rates are operational rather than universal.}
+
+\section{Conservation law as a diagnostic}
+\subsection{Screening behavior}
+Across 102 verified comparisons, a relative Jacobi-drift threshold of $10^{-6}$ accepted 15 runs, all of which also met the state and FTLE accuracy criteria. The screen rejected 19 other runs that passed both criteria and 68 that failed at least one. Thus strict Jacobi conservation was a useful but selective positive screen \emph{within this sample}. The absence of false reassurance among only 15 accepted cases does not establish a general guarantee.
+
+\fixedfig{conservation_screen.png}{\label{fig:jacobitab}Conservation-screen contingency table for 102 verified comparisons. Fifteen conservation-passing runs pass both numerical diagnostics, but 19 acceptable runs fail the strict conservation threshold.}
+\widefig{conservation_scatter.png}{\label{fig:jacobiscatter}Jacobi drift against FTLE error in both neighborhoods. Error growth is often related, but neither quantity alone fully specifies the other.}
+\widefig{jacobi_heatmap.png}{\label{fig:jacobithreshold}Sensitivity of apparent conservation-based reassurance to alternative Jacobi and FTLE error thresholds. Percentages use all verified comparisons as the denominator.}
+
+\subsection{Targeted case C12}
+The numerically demanding C12 initial condition failed the original reference-verification screen despite extremely small Jacobi drift. A three-level DOP853 refinement showed that the refined--ultra-refined trajectory disagreement was materially smaller than the standard--refined disagreement, while the Jacobi drift remained near floating-point scales. This demonstrates why invariant conservation, trajectory convergence and FTLE reproducibility are complementary tests.
+
+\fixedfig{c12_diagnostics.png}{\label{fig:c12}C12 orbital geometry, successive refinement disagreements, Jacobi drift and proximity to the perturbing planet. Narrow encounter passages coincide with rapid amplification of numerical discrepancies.}
+\widefig{c12_ftle.png}{\label{fig:c12ftle}C12 FTLE histories and numerical disagreement under increasing adaptive accuracy. Visually overlapping sensitivity curves conceal measurable differences visible on a logarithmic scale.}
+
+\section{Independent algorithmic validation}
+Three representative configurations (C05, C12 and C14) were independently integrated with explicit DOP853 and implicit Radau, at standard and refined tolerances. The refined trajectories and FTLE histories agreed closely, with C12 showing the largest discrepancies. Independent algorithmic agreement strengthens finite-time validation but does not establish the asymptotic dynamical classification of the orbit.
+
+\widefig{cross_solver_orbits.png}{\label{fig:crossorbit}Cross-method star-relative trajectories for C05, C12 and C14. Refined DOP853 and Radau overlap closely at the scale of the plotted orbits.}
+\widefig{cross_solver_position.png}{\label{fig:crosspos}Absolute position disagreements for solver refinement within DOP853 and Radau and the refined cross-algorithm comparison. C12 exhibits the strongest numerical sensitivity.}
+\widefig{cross_solver_ftle.png}{\label{fig:crossftle}Finite-time Lyapunov histories from two independent integration algorithms. Agreement is assessed quantitatively in Fig.~\ref{fig:crossdiff}, not merely from overlapping curves.}
+\widefig{cross_solver_error.png}{\label{fig:crossdiff}Logarithmic FTLE disagreement between standard and refined solutions and between refined DOP853 and Radau.}
+\widefig{cross_solver_jacobi.png}{\label{fig:crossjacobi}Sampled Jacobi drift under DOP853 and Radau. Both algorithms preserve the invariant closely over the selected finite horizon, but the level of drift differs by case and solver settings.}
+
+\section{Discussion}
+Three interlocking conclusions emerge. First, under-resolved gravitational encounters and coarse timesteps can change qualitative orbital predictions, including artificial escape in an analytically regular system. Second, numerical agreement of a scalar sensitivity indicator is not equivalent to agreement of the phase-space state, nor does close conservation of one invariant uniquely determine the trajectory. Third, numerical reliability depends on initial configuration, timestep, method and observation horizon. These findings support a multi-diagnostic verification strategy rather than any singular accuracy test.
+
+The ensemble percentages have important limits. The initial conditions form a structured grid, not an independent random population sample. The two three-body families are designated regular-looking and high-sensitivity based on finite-time evidence; neither family is guaranteed to contain exclusively regular or chaotic solutions. The 10\% state and 5\% FTLE thresholds were chosen operationally and are not universal physical boundaries. In potentially chaotic motion, pointwise trajectories naturally lose reproducibility after finite horizons even when selected long-time statistics may remain meaningful.
+
+\section{Conclusions}
+We constructed a numerical reliability atlas connecting gravitational state error, finite-time Lyapunov disagreement and Jacobi conservation. Euler, leapfrog and RK4 differed markedly in accuracy across two restricted three-body neighborhoods, with RK4 performing best under the joint finite-horizon criteria used here. Under-resolved integrations caused misleading orbital outcomes and both amplification and suppression of chaos-related measurements. A strict invariant screen detected many inaccurate simulations but also excluded accurate ones, while C12 showed why conservation alone cannot certify pointwise convergence. Independent DOP853--Radau calculations strengthened selected reference results. Future work should investigate larger ensembles, longer horizons, multiple tangent directions and independent high-precision reference algorithms before making asymptotic regular-versus-chaotic classifications.
+
+\section*{Data availability and declarations}
+The results originate from the computational notebook and the project figures. Final publication should archive the notebook, package versions, initial conditions and objective-specific CSV exports (especially Objectives 14--18), and rerun aggregate results directly from those archived tables. This draft does not claim a public repository has already been released. AI assistance was used in code explanation, debugging and manuscript preparation; all scientific interpretations and numerical results require author verification before submission.
+
+\begin{thebibliography}{9}
+\small
+
+\bibitem{hairer2006geometric}
+E.~Hairer, C.~Lubich, and G.~Wanner,
+\emph{Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations},
+2nd ed., Springer, 2006.
+
+\bibitem{wisdom1991symplectic}
+J.~Wisdom and M.~Holman,
+``Symplectic maps for the N-body problem,''
+\emph{The Astronomical Journal},
+vol.~102, pp.~1528--1538, 1991.
+
+\bibitem{lichtenberg1992regular}
+A.~J.~Lichtenberg and M.~A.~Lieberman,
+\emph{Regular and Chaotic Dynamics},
+2nd ed., Springer-Verlag, 1992.
+
+\bibitem{rein2015ias15}
+H.~Rein and D.~S.~Spiegel,
+``IAS15: A fast, adaptive, high-order integrator for gravitational dynamics, accurate to machine precision over a billion orbits,''
+\emph{Monthly Notices of the Royal Astronomical Society},
+vol.~446, no.~2, pp.~1424--1437, 2015.
+
+\bibitem{benettin1980lyapunov1}
+G.~Benettin, L.~Galgani, A.~Giorgilli, and J.-M.~Strelcyn,
+``Lyapunov Characteristic Exponents for Smooth Dynamical Systems and for Hamiltonian Systems; A Method for Computing All of Them. Part 1: Theory,''
+\emph{Meccanica},
+vol.~15, no.~1, pp.~9--20, 1980.
+
+\bibitem{benettin1980lyapunov2}
+G.~Benettin, L.~Galgani, A.~Giorgilli, and J.-M.~Strelcyn,
+``Lyapunov Characteristic Exponents for Smooth Dynamical Systems and for Hamiltonian Systems; A Method for Computing All of Them. Part 2: Numerical Application,''
+\emph{Meccanica},
+vol.~15, no.~1, pp.~21--30, 1980.
+
+\bibitem{virtanen2020scipy}
+P.~Virtanen et al. (SciPy 1.0 Contributors),
+``SciPy 1.0: Fundamental algorithms for scientific computing in Python,''
+\emph{Nature Methods},
+vol.~17, pp.~261--272, 2020.
+
+\end{thebibliography}
+\end{document}

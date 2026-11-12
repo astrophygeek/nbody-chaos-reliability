@@ -1,0 +1,4 @@
+integrator,attempted,verified,both_consistent_count,coverage_pct,consistent_of_verified_pct,consistent_of_attempted_pct
+RK4,36,34,25,94.44444444444444,73.52941176470588,69.44444444444444
+Leapfrog,36,34,9,94.44444444444444,26.470588235294116,25.0
+Euler,36,34,0,94.44444444444444,0.0,0.0
