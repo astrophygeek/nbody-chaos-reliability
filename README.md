@@ -1,5 +1,7 @@
 # Numerical Artifacts and the Reliability of Chaos Diagnostics in Gravitational N-Body Dynamics
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24158795.svg)](https://doi.org/10.5281/zenodo.24158795)
+
 [![MIT License](https://img.shields.io/badge/Code_License-MIT-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-Scientific_Computing-3776AB?logo=python&logoColor=white)
 ![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?logo=jupyter&logoColor=white)
